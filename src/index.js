@@ -1,74 +1,123 @@
-import './css/styles.css';
-import debounce from 'lodash.debounce';
-import { Notify } from 'notiflix/build/notiflix-notify-aio';
-import { fetchCountries } from './js/fetch';
+// import SlimSelect from 'slim-select';
 
-const DEBOUNCE_DELAY = 300;
+// new SlimSelect({
+//   select: '#breedSelector',
+// });
 
-const inputEl = document.getElementById('search-box');
-const listEl = document.querySelector('.country-list');
-const infoEl = document.querySelector('.country-info');
+import { fetchBreeds } from './cat-api.js';
+import { fetchCatByBreed } from './cat-api.js';
 
-const cleanMarkup = ref => (ref.innerHTML = '');
+const refs = {
+  select: document.querySelector('#breedSelector'),
+  catCard: document.querySelector('.cat-info'),
+  loader: document.querySelector('.loading'),
+  error: document.querySelector('.error'),
+  imgCatUrl: document.querySelector('#breed_image'),
+  divInfoCat: document.querySelector('#breed_json'),
+};
 
-const inputHandler = e => {
-  const textInput = e.target.value.trim();
+let storedBreeds = [];
 
-  if (!textInput) {
-    cleanMarkup(listEl);
-    cleanMarkup(infoEl);
-    return;
-  }
+showLoader();
+hideError();
+hideSelect();
 
-  fetchCountries(textInput)
-    .then(data => {
-      console.log(data);
-      if (data.length > 10) {
-        Notify.info(
-          'Too many matches found. Please enter a more specific name'
-        );
-        return;
-      }
-      renderMarkup(data);
+fetchBreeds()
+  .then(({ data }) => {
+    //filter to only include those with an `image` object
+    data = data.filter(img => img.image?.url != null);
+
+    storedBreeds = data;
+    console.log(storedBreeds);
+
+    for (let i = 0; i < storedBreeds.length; i++) {
+      const breed = storedBreeds[i];
+      let option = document.createElement('option');
+
+      //skip any breeds that don't have an image
+      if (!breed.image) continue;
+
+      //use the current array index
+      option.value = `${breed.id}`;
+      option.innerHTML = `${breed.name}`;
+      refs.select.appendChild(option);
+    }
+    // show select
+    hideLoader();
+    showSelect();
+    //show the first breed by default
+    //showBreedImage(0);
+  })
+  .catch(err => {
+    hideLoader();
+    showError();
+    throw new Error(err.message);
+  });
+
+function showBreedImage(index) {
+  fetchCatByBreed(index)
+    .then(({ data }) => {
+      // console.log('71 string:', index);
+      console.log('data[0].breeds[0]:', data[0]);
+
+      refs.imgCatUrl.src = data[0].url;
+      //   console.log(refs.imgCatUrl);
+      //   console.log(refs.divInfoCat);
+      refs.divInfoCat.innerHTML =
+        '<h1>' +
+        data[0].breeds[0].name +
+        '</h1>' +
+        '<p>' +
+        data[0].breeds[0].description +
+        '</p>' +
+        '<p><b>Temperament: </b>' +
+        data[0].breeds[0].temperament +
+        '</p>';
+      refs.divInfoCat.classList.add('breed_info');
     })
     .catch(err => {
-      cleanMarkup(listEl);
-      cleanMarkup(infoEl);
-      Notify.failure('Oops, there is no country with that name');
+      hideLoader();
+      showError();
+      throw new Error(err.message);
     });
-};
+}
 
-const renderMarkup = data => {
-  if (data.length === 1) {
-    cleanMarkup(listEl);
-    const markupInfo = createInfoMarkup(data);
-    infoEl.innerHTML = markupInfo;
-  } else {
-    cleanMarkup(infoEl);
-    const markupList = createListMarkup(data);
-    listEl.innerHTML = markupList;
-  }
-};
+refs.select.addEventListener('change', event => {
+  refs.select.disabled = true;
+  showLoader();
 
-const createListMarkup = data => {
-  return data
-    .map(
-      ({ name, flags }) =>
-        `<li><img src="${flags.png}" alt="${name.official}" width="60" height="40">${name.official}</li>`
-    )
-    .join('');
-};
+  const index = event.target.value;
+  showBreedImage(index);
+  //console.log('element', index);
 
-const createInfoMarkup = data => {
-  return data.map(
-    ({ name, capital, population, flags, languages }) =>
-      `<h1><img src="${flags.png}" alt="${
-        name.official
-      }" width="40" height="40">${name.official}</h1>
-      <p>Capital: ${capital}</p>
-      <p>Population: ${population}</p>
-      <p>Languages: ${Object.values(languages)}</p>`
-  );
-};
+  hideLoader();
+  refs.select.disabled = false;
+});
 
-inputEl.addEventListener('input', debounce(inputHandler, DEBOUNCE_DELAY));
+function showLoader() {
+  refs.catCard.classList.add('hidden');
+  refs.loader.classList.remove('hidden');
+  //refs.loader.style.display = 'block';
+}
+
+function hideLoader() {
+  refs.loader.classList.add('hidden');
+  refs.catCard.classList.remove('hidden');
+  //refs.loader.style.display = 'none';
+}
+
+function showError() {
+  refs.error.classList.remove('hidden');
+}
+
+function hideError() {
+  refs.error.classList.add('hidden');
+}
+
+function showSelect() {
+  refs.select.classList.remove('hidden');
+}
+
+function hideSelect() {
+  refs.select.classList.add('hidden');
+}
