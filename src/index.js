@@ -51,7 +51,7 @@ fetchBreeds()
   .catch(err => {
     hideLoader();
     showError();
-    throw new Error(err.message);
+    console.log(err.message);
   });
 
 function showBreedImage(index) {
@@ -78,7 +78,7 @@ function showBreedImage(index) {
     .catch(err => {
       hideLoader();
       showError();
-      throw new Error(err.message);
+      console.log(err.message);
     });
 }
 
