@@ -79,6 +79,10 @@ function showBreedImage(index) {
       hideLoader();
       showError();
       console.log(err.message);
+    })
+    .finally(() => {
+      hideLoader();
+      refs.select.disabled = false;
     });
 }
 
@@ -89,9 +93,6 @@ refs.select.addEventListener('change', event => {
   const index = event.target.value;
   showBreedImage(index);
   //console.log('element', index);
-
-  hideLoader();
-  refs.select.disabled = false;
 });
 
 function showLoader() {
